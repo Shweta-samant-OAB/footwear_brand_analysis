@@ -122,7 +122,7 @@ if uploaded_file is not None:
                 mode='lines+markers',
                 name=brand,
                 marker=dict(
-                    size=[max(10, p['frequency']) for p in product_info],  # Ensure minimum size of 5
+                    size = [max(10, min(p['frequency'], 25)) for p in product_info],  # Ensure minimum size of 5
                     color='red', 
                     showscale=False
                 ),
