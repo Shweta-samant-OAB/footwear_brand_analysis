@@ -148,7 +148,7 @@ if uploaded_file is not None:
             title='Product Types',
             ticktext=top_products,
             tickvals=list(range(len(top_products))),
-            tickangle=45
+            tickangle=0
         ),
         yaxis=dict(
             title='Brands',
