@@ -90,12 +90,18 @@ if uploaded_file is not None:
     brands = df_filtered_with_others['Brand'].unique().tolist()
     brand_spacing = 75
 
-    # Calculate brand minimum prices
+    # Get brand-wise product type counts
+    brand_product_counts = df_filtered_with_others.groupby('Brand')['Product type'].nunique()
+
+    # Separate brands with multiple product types and single product type
+    multi_product_brands = brand_product_counts[brand_product_counts > 1].index.tolist()
+    single_product_brands = brand_product_counts[brand_product_counts == 1].index.tolist()
+
+    # Sort multi-product brands based on their minimum price
     brand_min_prices = {brand: min(df_filtered_with_others[df_filtered_with_others['Brand'] == brand]['Price']) 
-                       for brand in brands}
-    
-    # Sort brands based on minimum prices in ascending order
-    sorted_brands = sorted(brands, key=lambda brand: brand_min_prices[brand])
+                        for brand in multi_product_brands}
+    sorted_brands = sorted(multi_product_brands, key=lambda brand: brand_min_prices[brand])
+
 
     # Consistent red color for all brands
     brand_colors = ['red'] * len(sorted_brands)
