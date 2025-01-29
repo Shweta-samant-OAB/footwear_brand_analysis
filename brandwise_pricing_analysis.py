@@ -73,7 +73,7 @@ if uploaded_file is not None:
     fig = go.Figure()
     
     brands = df_filtered['Brand'].unique().tolist() 
-    brand_spacing = 5 
+    brand_spacing = 10
 
     # Calculate brand minimum prices
     brand_min_prices = {brand: min(df_filtered[df_filtered['Brand'] == brand]['Price']) for brand in brands}
