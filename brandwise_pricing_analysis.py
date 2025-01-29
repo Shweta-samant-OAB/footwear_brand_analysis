@@ -40,13 +40,25 @@ if uploaded_file is not None:
     # Now filter the DataFrame based on price range
     df_filtered = df[(df['Price'] >= min_price) & (df['Price'] <= max_price)]
 
-    # Calculate the overall frequency and the frequency for the filtered data
-    overall_freq = df['Product type'].value_counts().head(10)
-    range_freq = df_filtered['Product type'].value_counts().head(10)
+    # Get top 10 product types
+    top_10_products = df_filtered['Product type'].value_counts().head(10).index.tolist()
+    
+    # Create a copy of the DataFrame for modification
+    df_filtered_with_others = df_filtered.copy()
+    
+    # Replace all non-top-10 product types with "Others"
+    df_filtered_with_others.loc[~df_filtered_with_others['Product type'].isin(top_10_products), 'Product type'] = 'Others'
+    
+    # Calculate frequencies including "Others"
+    overall_freq = df['Product type'].value_counts()
+    overall_others = pd.Series({'Others': overall_freq[~overall_freq.index.isin(top_10_products)].sum()})
+    overall_freq = pd.concat([overall_freq[overall_freq.index.isin(top_10_products)], overall_others])
+    
+    range_freq = df_filtered_with_others['Product type'].value_counts()
     
     fig_freq = make_subplots(rows=1, cols=2, 
                             subplot_titles=('Overall Product Type Distribution',
-                                          f'Distribution in Price Range ${min_price}-{max_price}')) 
+                                          f'Distribution in Price Range ${min_price}-${max_price}')) 
     
     fig_freq.add_trace(
         go.Bar(x=overall_freq.index, y=overall_freq.values, name='Overall'),
@@ -69,23 +81,27 @@ if uploaded_file is not None:
     
     st.plotly_chart(fig_freq, use_container_width=True)
     
-    top_products = range_freq.index.tolist()
+    # Include "Others" in top products list
+    top_products = list(range_freq.index)
+    top_products = [p for p in range_freq.index if p != "Others"] + (["Others"] if "Others" in range_freq.index else [])
+    
     fig = go.Figure()
     
-    brands = df_filtered['Brand'].unique().tolist() 
-    brand_spacing = 10
+    brands = df_filtered_with_others['Brand'].unique().tolist()
+    brand_spacing = 75
 
     # Calculate brand minimum prices
-    brand_min_prices = {brand: min(df_filtered[df_filtered['Brand'] == brand]['Price']) for brand in brands}
+    brand_min_prices = {brand: min(df_filtered_with_others[df_filtered_with_others['Brand'] == brand]['Price']) 
+                       for brand in brands}
     
     # Sort brands based on minimum prices in ascending order
     sorted_brands = sorted(brands, key=lambda brand: brand_min_prices[brand])
 
     # Consistent red color for all brands
-    brand_colors = ['red'] * len(sorted_brands) 
+    brand_colors = ['red'] * len(sorted_brands)
 
     for idx, brand in enumerate(sorted_brands):
-        brand_data = df_filtered[df_filtered['Brand'] == brand]
+        brand_data = df_filtered_with_others[df_filtered_with_others['Brand'] == brand]
         
         product_info = []
         
@@ -104,7 +120,7 @@ if uploaded_file is not None:
         product_info.sort(key=lambda x: x['x_coord'])
         
         if product_info:
-            brand_min_price = brand_min_prices[brand]  # Use pre-calculated minimum price
+            brand_min_price = brand_min_prices[brand]
             brand_max_price = max(p['price'] for p in product_info)
             price_range = brand_max_price - brand_min_price
             
@@ -122,8 +138,8 @@ if uploaded_file is not None:
                 mode='lines+markers',
                 name=brand,
                 marker=dict(
-                    size = [max(10, min(p['frequency'], 25)) for p in product_info],  # Ensure minimum size of 5
-                    color='red', 
+                    size=[max(10, min(20, p['frequency']*2)) for p in product_info],
+                    color='red',
                     showscale=False
                 ),
                 line=dict(color="blue", width=2),
@@ -143,7 +159,7 @@ if uploaded_file is not None:
             )
     
     fig.update_layout(
-        title=f'Product Type Comparison (Price Range: ${min_price}-{max_price})',
+        title=f'Product Type Comparison (Price Range: ${min_price}-${max_price})',
         xaxis=dict(
             title='Product Types',
             ticktext=top_products,
@@ -152,12 +168,12 @@ if uploaded_file is not None:
         ),
         yaxis=dict(
             title='Brands',
-            ticktext=sorted_brands,  # Use sorted brands for y-axis labels
-            tickvals=[i * brand_spacing for i in range(len(sorted_brands))]
+            ticktext=sorted_brands,
+            tickvals=[i * brand_spacing for i in range(len(sorted_brands))]  # Adjusted brand spacing
         ),
-        height=max(700, 150 + (len(brands) * 50)),
-        showlegend=False,  # Remove legend
-        margin=dict(l=150, r=50, b=100, t=50)
+        height=max(700, 200 + (len(brands) * brand_spacing)),  # Increase height dynamically
+        showlegend=False,
+        margin=dict(l=150, r=50, b=100, t=50),
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -179,7 +195,7 @@ if uploaded_file is not None:
         range_df = pd.DataFrame({
             'Product Type': range_freq.index,
             'Count': range_freq.values,
-            'Percentage': (range_freq.values / len(df_filtered) * 100).round(2)
+            'Percentage': (range_freq.values / len(df_filtered_with_others) * 100).round(2)
         })
         st.dataframe(range_df)
 
